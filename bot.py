@@ -106,6 +106,45 @@ async def send_tips(message: Message):
     tip = random.choice(tips)
     await message.answer(tip)
 
+@dp.message(F.text == 'Личные финансы')
+async def send_finances(message: Message, state: FSMContext):
+    await state.set_state(FinancesForm.category1)
+    await message.reply('Введите первую категорию расходов:')
+
+@dp.message(FinancesForm.category1)
+async def send_finances(message: Message, state: FSMContext):
+    await state.update_data(category1=message.text)
+    await state.set_state(FinancesForm.expenses1)
+    await message.reply('Введите сумму расходов на эту категорию:')
+
+@dp.message(FinancesForm.expenses1)
+async def send_finances(message: Message, state: FSMContext):
+    await state.update_data(expenses1=float(message.text))
+    await state.set_state(FinancesForm.category2)
+    await message.reply('Введите вторую категорию расходов:')
+
+@dp.message(FinancesForm.category2)
+async def send_finances(message: Message, state: FSMContext):
+    await state.update_data(category2=message.text)
+    await state.set_state(FinancesForm.expenses2)
+    await message.reply('Введите сумму расходов на эту категорию:')
+
+@dp.message(FinancesForm.expenses2)
+async def send_finances(message: Message, state: FSMContext):
+    await state.update_data(expenses2=float(message.text))
+    await state.set_state(FinancesForm.category3)
+    await message.reply('Введите третью категорию расходов:')
+
+@dp.message(FinancesForm.category3)
+async def send_finances(message: Message, state: FSMContext):
+    await state.update_data(category3=message.text)
+    await state.set_state(FinancesForm.expenses3)
+    await message.reply('Введите сумму расходов на эту категорию:')
+
+@dp.message(FinancesForm.expenses3)
+async def send_finances(message: Message, state: FSMContext):
+    await state.update_data(expenses3=float(message.text))
+    data = await state.get_data()
 async def main():
     await dp.start_polling(bot)
 
