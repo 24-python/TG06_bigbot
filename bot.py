@@ -1,25 +1,34 @@
 import asyncio
+import os  # Для работы с переменными окружения
 from aiogram import Bot, Dispatcher, F
-from aiogram. filters import CommandStart, Command
-from aiogram. types import Message, FSInputFile
-from aiogram. fsm. context import FSMContext
-from aiogram. fsm.state import State, StatesGroup
-from aiogram. fsm. storage. memory import MemoryStorage
+from aiogram.filters import CommandStart, Command
+from aiogram.types import Message, FSInputFile
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 
-from config import TOKEN
 import sqlite3
 import aiohttp
 import logging
 import requests
 import random
+from dotenv import load_dotenv
+load_dotenv()
 
+# Получаем токен из переменных окружения
+TOKEN = os.getenv("BOT_TOKEN")
+if not TOKEN:
+    raise ValueError("Токен бота не найден! Установите переменную окружения BOT_TOKEN.")
+
+# Создаём бота и диспетчер
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 logging.basicConfig(level=logging.INFO)
 
+# Кнопки меню
 button_registr = KeyboardButton(text="Регистрация в телеграм-боте")
 button_exchange_rates = KeyboardButton(text="Курс валют")
 button_tips = KeyboardButton(text="Советы по экономии")
@@ -30,9 +39,11 @@ keyboards = ReplyKeyboardMarkup(keyboard=[
     [button_tips, button_finances]
     ], resize_keyboard=True)
 
+# Подключение к базе данных
 conn = sqlite3.connect('user.db')
 cursor = conn.cursor()
 
+# Создание таблицы пользователей
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY,
@@ -48,6 +59,7 @@ CREATE TABLE IF NOT EXISTS users (
 ''')
 conn.commit()
 
+# Машина состояний для финансовых категорий
 class FinancesForm(StatesGroup):
     category1 = State()
     expenses1 = State()
@@ -56,10 +68,12 @@ class FinancesForm(StatesGroup):
     category3 = State()
     expenses3 = State()
 
+# Обработчик команды /start
 @dp.message(CommandStart())
 async def cmd_start(message: Message):
     await message.answer('Привет! Я ваш личный финансовый помощник! Выберите одну из опций в меню:', reply_markup=keyboards)
 
+# Обработчик регистрации
 @dp.message(F.text == 'Регистрация в телеграм-боте')
 async def registration(message: Message):
     telegram_id = message.from_user.id
@@ -71,10 +85,9 @@ async def registration(message: Message):
     else:
         cursor.execute('''INSERT INTO users (telegram_id, name) VALUES (?, ?)''', (telegram_id, name))
         conn.commit()
-        conn.close()
         await message.answer('Вы успешно зарегистрированы!')
 
-
+# Обработчик "Курс валют"
 @dp.message(F.text == 'Курс валют')
 async def exchange_rates(message: Message):
     url = 'https://v6.exchangerate-api.com/v6/93f384604322ccdaceacb874/latest/USD'
@@ -91,23 +104,20 @@ async def exchange_rates(message: Message):
     except:
         await message.answer('Произошла ошибка при получении курса валют')
 
+# Обработчик "Советы по экономии"
 @dp.message(F.text == 'Советы по экономии')
 async def send_tips(message: Message):
     tips = [
-        'Планируйте бюджет 📝\nЗаписывайте доходы и расходы, чтобы понимать, куда уходят деньги. Используйте мобильные приложения или таблицы Excel для удобства.',
-        'Следите за акциями и скидками 🛒\nПокупайте товары по акциям, используйте кэшбэк и бонусные программы магазинов.',
-        'Покупайте оптом 📦\nНекоторые продукты и бытовые товары выгоднее покупать в больших упаковках. Это снижает затраты в пересчёте на единицу товара.',
-        'Готовьте дома 🍳\nДомашняя еда дешевле и полезнее, чем кафе и рестораны. Планируйте меню на неделю, чтобы не тратить лишнее.',
-        'Откажитесь от ненужных подписок 📡\nПересмотрите подписки на стриминговые сервисы, платные приложения и другие услуги – возможно, некоторые из них вам больше не нужны.',
-        'Используйте общественный транспорт или каршеринг 🚍🚗\nЕсли автомобиль – не жизненная необходимость, попробуйте альтернативные способы передвижения, чтобы сократить расходы на бензин, страховку и ремонт.',
-        'Экономьте на коммунальных услугах 💡💦\nУстановите энергосберегающие лампы, выключайте свет и воду, когда они не нужны. Используйте технику с классом энергопотребления A+.',
-        'Откладывайте часть дохода 💰\nСделайте правило откладывать хотя бы 10% от зарплаты. Это поможет создать "подушку безопасности" и избежать долгов.',
-        'Покупайте б/у вещи и продавайте ненужное 👕📱\nМногие вещи можно купить в хорошем состоянии с рук – техника, мебель, одежда. Также продавайте ненужные вещи через Авито или Юлу.',
-        'Ставьте финансовые цели 🎯\nОпределите, на что вы хотите накопить (например, отпуск, ремонт, новая техника) и двигайтесь к этому, избегая импульсивных покупок.',
+        'Планируйте бюджет 📝\nЗаписывайте доходы и расходы, чтобы понимать, куда уходят деньги.',
+        'Следите за акциями и скидками 🛒\nПокупайте товары по акциям, используйте кэшбэк.',
+        'Готовьте дома 🍳\nДомашняя еда дешевле и полезнее, чем кафе и рестораны.',
+        'Откладывайте часть дохода 💰\nСтарайтесь откладывать хотя бы 10% от зарплаты.',
+        'Покупайте б/у вещи 👕📱\nМногие вещи можно купить в хорошем состоянии с рук.',
     ]
     tip = random.choice(tips)
     await message.answer(tip)
 
+# Обработчик "Личные финансы"
 @dp.message(F.text == 'Личные финансы')
 async def send_finances(message: Message, state: FSMContext):
     await state.set_state(FinancesForm.category1)
@@ -151,10 +161,10 @@ async def send_finances(message: Message, state: FSMContext):
     cursor.execute('''UPDATE users SET category1 = ?, expenses1 = ?, category2 = ?, expenses2 = ?, category3 = ?, expenses3 = ? WHERE telegram_id = ?''',
                    (data['category1'], data['expenses1'], data['category2'], data['expenses2'], data['category3'], float(message.text), telegram_id))
     conn.commit()
-    conn.close()
     await state.clear()
     await message.answer('Категории и расходы успешно добавлены в базу данных!')
 
+# Запуск бота
 async def main():
     await dp.start_polling(bot)
 
