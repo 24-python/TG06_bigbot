@@ -71,7 +71,9 @@ async def registration(message: Message):
     else:
         cursor.execute('''INSERT INTO users (telegram_id, name) VALUES (?, ?)''', (telegram_id, name))
         conn.commit()
+        conn.close()
         await message.answer('Вы успешно зарегистрированы!')
+
 
 @dp.message(F.text == 'Курс валют')
 async def exchange_rates(message: Message):
@@ -149,6 +151,7 @@ async def send_finances(message: Message, state: FSMContext):
     cursor.execute('''UPDATE users SET category1 = ?, expenses1 = ?, category2 = ?, expenses2 = ?, category3 = ?, expenses3 = ? WHERE telegram_id = ?''',
                    (data['category1'], data['expenses1'], data['category2'], data['expenses2'], data['category3'], float(message.text), telegram_id))
     conn.commit()
+    conn.close()
     await state.clear()
     await message.answer('Категории и расходы успешно добавлены в базу данных!')
 
